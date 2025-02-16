@@ -16,17 +16,17 @@ type ScoreRecord = {
 const SOUND_PACKS = [
   {
     name: '解压音效',
-    eat: 'https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3',    // 软糖咀嚼声
-    crash: 'https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3',  // 泡泡破裂声
-    applause: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3', // 轻松的胜利音效
-    cheer: 'https://assets.mixkit.co/active_storage/sfx/2575/2575-preview.mp3'   // 愉悦的加油声
+    eat: 'https://freesound.org/data/previews/240/240776_4284968-lq.mp3',    // 软糖咀嚼声
+    crash: 'https://freesound.org/data/previews/240/240777_4284968-lq.mp3',  // 轻柔碰撞声
+    applause: 'https://freesound.org/data/previews/240/240778_4284968-lq.mp3', // 轻松胜利声
+    cheer: 'https://freesound.org/data/previews/240/240779_4284968-lq.mp3'   // 愉悦加油声
   },
   {
     name: '治愈音效',
-    eat: 'https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3',    // 软萌的吃东西声
-    crash: 'https://assets.mixkit.co/active_storage/sfx/2576/2576-preview.mp3',  // 轻柔的碰撞声
-    applause: 'https://assets.mixkit.co/active_storage/sfx/2577/2577-preview.mp3', // 温暖的欢呼声
-    cheer: 'https://assets.mixkit.co/active_storage/sfx/2579/2579-preview.mp3'   // 治愈的鼓励声
+    eat: 'https://freesound.org/data/previews/242/242857_4284968-lq.mp3',    // 软萌吃东西声
+    crash: 'https://freesound.org/data/previews/242/242858_4284968-lq.mp3',  // 轻柔碰撞声
+    applause: 'https://freesound.org/data/previews/242/242859_4284968-lq.mp3', // 温暖欢呼声
+    cheer: 'https://freesound.org/data/previews/242/242860_4284968-lq.mp3'   // 治愈鼓励声
   },
   {
     name: 'ASMR音效',
@@ -78,24 +78,16 @@ export default function Snake() {
   }, [currentSoundPack]);
 
   // 修改音频播放函数，添加错误处理和重试机制
-  const playSound = async (sound: HTMLAudioElement | null) => {
+  const playSound = useCallback(async (sound: HTMLAudioElement | null) => {
     if (sound && !isMuted) {
       try {
         sound.currentTime = 0;
-        const playPromise = sound.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.log('音效播放失败，尝试重新加载:', error);
-            // 重新加载并尝试播放
-            sound.load();
-            sound.play().catch(err => console.log('重试失败:', err));
-          });
-        }
+        await sound.play();
       } catch (err) {
-        console.log('音效播放出错:', err);
+        console.log('音效播放失败:', err);
       }
     }
-  };
+  }, [isMuted]);
 
   // 生成食物
   const generateFood = useCallback(() => {
@@ -178,25 +170,17 @@ export default function Snake() {
       });
     };
 
-    // 按顺序播放结束音效
-    const playEndingSequence = async () => {
-      stopAllAudio();
-      
-      // 先播放碰撞音效
-      await playSound(crashSound.current);
-      
-      // 延迟后播放结果音效
-      setTimeout(async () => {
-        const currentHighScore = highScores.length > 0 ? highScores[0].score : 0;
-        if (score > currentHighScore) {
-          await playSound(applauseSound.current);
-        } else {
-          await playSound(cheerSound.current);
-        }
-      }, 800); // 缩短延迟时间以提升响应性
-    };
+    stopAllAudio();
+    playSound(crashSound.current);
 
-    playEndingSequence();
+    setTimeout(() => {
+      const currentHighScore = highScores.length > 0 ? highScores[0].score : 0;
+      if (score > currentHighScore) {
+        playSound(applauseSound.current);
+      } else {
+        playSound(cheerSound.current);
+      }
+    }, 800);
 
     if (score > 0) {
       setShowNameInput(true);
@@ -270,7 +254,7 @@ export default function Snake() {
   }, []);
 
   // 保存新的分数记录
-  const saveScore = (name: string) => {
+  const saveScore = () => {
     const newScore: ScoreRecord = {
       score,
       date: new Date().toLocaleString()
@@ -278,7 +262,7 @@ export default function Snake() {
     
     const updatedScores = [...highScores, newScore]
       .sort((a, b) => b.score - a.score)
-      .slice(0, 10); // 只保留前10名
+      .slice(0, 10);
 
     setHighScores(updatedScores);
     localStorage.setItem('snakeHighScores', JSON.stringify(updatedScores));
@@ -481,7 +465,7 @@ export default function Snake() {
                 />
                 <button
                   className="px-6 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors"
-                  onClick={() => saveScore(playerName)}
+                  onClick={() => saveScore()}
                   disabled={!playerName.trim()}
                 >
                   保存分数
